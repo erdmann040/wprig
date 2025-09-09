@@ -136,6 +136,12 @@ const processCSSFile = ( filePath, outputPath ) => {
 	writeFileSync( outputPath, result.code );
 	if ( result.map ) {
 		writeFileSync( `${ outputPath }.map`, result.map );
+		// Hinweis für DevTools: Map automatisch laden
+		writeFileSync(
+			outputPath,
+			readFileSync( outputPath, 'utf8' ) +
+				`\n/*# sourceMappingURL=${ path.basename( outputPath ) }.map */`
+		);
 	}
 };
 
