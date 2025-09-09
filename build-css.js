@@ -223,6 +223,14 @@ function cleanupVirtualEntry( file ) {
  * @param {string} outputPath - Absolute path to the compiled CSS output file.
  * @return {Promise<void>} Resolves when processing is complete.
  */
+/**
+ * Build a single CSS entry with LightningCSS `bundleAsync` and correct sourcemaps.
+ * Uses a real temporary entry file to guarantee import order and robust resolving.
+ *
+ * @param {string} filePath   - Absolute path to the input CSS entry file.
+ * @param {string} outputPath - Absolute path to the compiled CSS output file.
+ * @return {Promise<void>} Resolves when processing is complete.
+ */
 async function processCSSFile( filePath, outputPath ) {
 	// Build virtual prelude from config (e.g., tokens/_custom-media.css)
 	const prependFiles = resolveImportFromList();
@@ -244,14 +252,18 @@ async function processCSSFile( filePath, outputPath ) {
 			sourceMap: isDev,
 			drafts: { customMedia: true },
 			projectRoot: paths.styles.srcDir,
-			targets, // ensures @custom-media gets expanded
+			targets,
+			resolver: {
+				// Transform sources BEFORE mapping is generated, so sourcemaps stay correct
+				read( resolvedPath ) {
+					const raw = readFileSync( resolvedPath, 'utf8' );
+					return replaceInlineCSS( processThemeUrls( raw ) );
+				},
+			},
 		} );
 
-		// Optional post-processing (kept from your original script)
-		let css = code.toString();
-		css = replaceInlineCSS( processThemeUrls( css ) );
-
-		writeFileSync( outputPath, css );
+		// Write exactly what LightningCSS emitted; no post-string transforms here
+		writeFileSync( outputPath, code.toString() );
 
 		if ( map ) {
 			const mapPath = `${ outputPath }.map`;
